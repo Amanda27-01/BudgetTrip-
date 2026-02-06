@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trip Details - BudgetTrip</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        #map { height: 300px; width: 100%; border-radius: 0.5rem; z-index: 1; }
+        .rec-card:hover { transform: translateY(-2px); border-color: #3b82f6; }
+        .weather-icon { filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.1)); }
+
+        @keyframes pulse-red {
+            0%, 100% { background-color: #fee2e2; }
+            50% { background-color: #fecaca; }
+        }
+        .animate-pulse-red { animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        @keyframes pulse-orange {
+            0%, 100% { background-color: #ffedd5; }
+            50% { background-color: #fed7aa; }
+        }
+        .animate-pulse-orange { animation: pulse-orange 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+<div class="container mx-auto mt-8 px-4 max-w-[95%]">
+
+    <!-- 1. Over Budget Alert (RED) -->
+    <div th:if="${isOverBudget}" class="animate-pulse-red border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-md flex items-center justify-between">
+        <div>
+            <p class="font-bold flex items-center gap-2">⚠️ Budget Exceeded!</p>
+            <p class="text-sm">You have exceeded your total budget.</p>
+        </div>
+        <span class="text-2xl font-bold">💸</span>
+    </div>
+
+    <!-- 2. Low Budget Alert (ORANGE) -->
+    <div th:if="${isLowBudget}" class="animate-pulse-orange border-l-4 border-orange-500 text-orange-800 p-4 mb-6 rounded shadow-md flex items-center justify-between">
+        <div>
+            <p class="font-bold flex items-center gap-2">📉 Low Budget Warning!</p>
+            <p class="text-sm">Only <b>Rs. <span th:text="${remaining}"></span></b> remaining. Showing budget-friendly suggestions.</p>
+        </div>
+        <span class="text-2xl font-bold">📉</span>
+    </div>
+
+    <!-- Header / Summary Card -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8 relative">
+        <div class="flex flex-col md:flex-row justify-between items-start mb-4 gap-4">
+            <div class="w-full">
+                <!-- Route & Weather Section -->
+                <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <h1 class="text-3xl font-bold text-blue-600 flex items-center gap-2">
+                        <span id="startLocText" th:text="${trip.startLocation}">From</span>
+                        <span class="text-gray-400">➝</span>
+                        <span id="endLocText" th:text="${trip.endLocation}">To</span>
+                    </h1>
+
+                    <div id="weatherWidget" class="hidden flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                        <img id="weatherIcon" src="" alt="Weather" class="w-8 h-8 weather-icon">
+                        <div class="leading-tight">
+                            <span id="weatherTemp" class="text-lg font-bold text-blue-700 block">--°C</span>
+                            <span id="weatherDesc" class="text-xs text-blue-600 font-medium block -mt-1">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-gray-600 flex items-center gap-3">
+                    <span>📅 <span th:text="${trip.startDate}"></span> to <span th:text="${trip.endDate}"></span></span>
+                    <span class="bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded flex items-center gap-1">
+                        🚗 Distance: <span th:text="${trip.distanceKm} + ' km'"></span>
+                    </span>
+                    <input type="hidden" id="rawDistance" th:value="${trip.distanceKm}">
+                </p>
+            </div>
+
+            <div class="flex gap-2 self-end md:self-center shrink-0">
+                <a href="/dashboard" class="text-gray-500 hover:text-blue-600 font-medium transition flex items-center gap-1 mr-2">← Dashboard</a>
+                <a th:href="@{/trips/{id}/export(id=${trip.id})}" class="bg-gray-800 hover:bg-black text-white font-bold py-2 px-4 rounded shadow flex items-center transition text-sm">⬇ Export PDF</a>
+            </div>
+        </div>
+
+        <div class="mb-2 flex justify-between font-bold text-sm text-gray-700">
+            <span>Spent: <span th:class="${isOverBudget} ? 'text-red-600 font-extrabold' : 'text-red-500'" th:text="${totalSpent}">0</span></span>
+            <span>Total: <span class="text-blue-600" th:text="${trip.totalBudget}">50000</span></span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700 overflow-hidden mb-6">
+            <div class="h-4 rounded-full transition-all duration-500"
+                 th:classappend="${isOverBudget} ? 'bg-red-600' : (${isLowBudget} ? 'bg-orange-500' : 'bg-blue-600')"
+                 th:style="'width: ' + ${progress} + '%'"></div>
+        </div>
+
+        <div id="map" class="shadow-inner border border-gray-300"></div>
+    </div>
+
+    <!-- Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+
+        <!-- COL 1: Add Expense Form -->
+        <div class="xl:col-span-1">
+            <div class="bg-white rounded-lg shadow p-6 sticky top-4">
+                <h3 class="text-xl font-bold mb-4 text-gray-700">Add Expense</h3>
+                <form th:action="@{/trips/{id}/add-expense(id=${trip.id})}" th:object="${newExpense}" method="post">
+                    <div class="mb-3">
+                        <label class="block text-sm font-bold mb-1">Title</label>
+                        <input type="text" id="expenseTitle" th:field="*{title}" class="w-full border rounded p-2" placeholder="e.g. Train Ticket" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-bold mb-1">Category</label>
+                        <select id="expenseCategory" th:field="*{category}" class="w-full border rounded p-2">
+                            <option value="FLIGHT">Flight</option>
+                            <option value="HOTEL">Hotel</option>
+                            <option value="FOOD">Food</option>
+                            <option value="ACTIVITY">Activity</option>
+                            <option value="TRANSPORT">Transport</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-bold mb-1">Cost (Rs.)</label>
+                        <input type="number" step="0.01" id="expenseCost" th:field="*{cost}" class="w-full border rounded p-2" placeholder="0.00" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition">
+                        Add Item
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- COL 2 & 3: Expense List -->
+        <div class="lg:col-span-2 xl:col-span-2">
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                    <tr>
+                        <th class="px-5 py-3 border-b-2 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">Item</th>
+                        <th class="px-5 py-3 border-b-2 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">Category</th>
+                        <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">Cost</th>
+                        <th class="px-5 py-3 border-b-2 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="expense : ${expenses}">
+                        <td class="px-5 py-5 border-b bg-white text-sm" th:text="${expense.title}"></td>
+                        <td class="px-5 py-5 border-b bg-white text-sm">
+                            <span class="bg-green-200 text-green-900 px-2 py-1 rounded text-xs" th:text="${expense.category}"></span>
+                        </td>
+                        <td class="px-5 py-5 border-b bg-white text-sm text-right font-bold" th:text="${expense.cost}"></td>
+                        <td class="px-5 py-5 border-b bg-white text-sm text-center">
+                            <div class="flex justify-center gap-2">
+                                <a th:href="@{/trips/{tripId}/expenses/{expenseId}/edit(tripId=${trip.id}, expenseId=${expense.id})}" class="text-blue-500 hover:text-blue-700">✏️</a>
+                                <a th:href="@{/trips/{tripId}/expenses/{expenseId}/remove(tripId=${trip.id}, expenseId=${expense.id})}" class="text-red-500 hover:text-red-700" onclick="return confirm('Are you sure?');">🗑️</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${expenses.empty}">
+                        <td colspan="4" class="px-5 py-5 text-center text-gray-500">No expenses added yet.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- COL 4: Dynamic Recommendations & Balance -->
+        <div class="lg:col-span-1 xl:col-span-1">
+            <div class="bg-yellow-50 rounded-lg shadow p-4 border border-yellow-200 sticky top-4">
+
+                <div class="p-3 rounded mb-4 border shadow-sm text-center"
+                     th:classappend="${isOverBudget} ? 'bg-red-50 border-red-300' : (${isLowBudget} ? 'bg-orange-50 border-orange-300' : 'bg-white/80 border-yellow-300')">
+                    <p class="text-xs font-bold uppercase tracking-wide"
+                       th:classappend="${isOverBudget} ? 'text-red-800' : (${isLowBudget} ? 'text-orange-800' : 'text-yellow-800')">
+                        Wallet Balance 💰
+                    </p>
+                    <p class="text-xl font-extrabold mt-1"
+                       th:classappend="${isOverBudget} ? 'text-red-600' : (${isLowBudget} ? 'text-orange-600' : 'text-green-600')">
+                        Rs. <span id="walletBalance" th:text="${rawRemaining}">0.00</span>
+                    </p>
+                </div>
+
+                <h3 class="text-lg font-bold mb-2 text-yellow-800 flex items-center gap-2">
+                    ✨ Suggestions
+                </h3>
+
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="searchBox" placeholder="Search..."
+                           class="w-full text-sm border border-gray-300 rounded p-1.5 focus:outline-none focus:border-yellow-500">
+                    <button onclick="manualSearch()" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 font-bold">🔍</button>
+                </div>
+
+                <div id="recommendationList" class="space-y-3">
+                    <div class="text-center text-gray-500 text-sm animate-pulse">Initializing map...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COL 5: Transport Calculator -->
+        <div class="lg:col-span-1 xl:col-span-1">
+            <div class="bg-blue-50 rounded-lg shadow p-4 border border-blue-200 sticky top-4">
+                <h3 class="text-lg font-bold mb-3 text-blue-800 flex items-center gap-2">
+                    🚕 Transport Calc
+                </h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-blue-700 mb-1">One-way Distance (km)</label>
+                        <input type="number" id="calcDistance" class="w-full text-sm border border-blue-300 rounded p-1.5 bg-gray-100" readonly>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-blue-700 mb-1">Mode</label>
+                            <select id="calcVehicle" onchange="toggleTransportMode()" class="w-full text-sm border border-blue-300 rounded p-1.5 bg-white">
+                                <optgroup label="Private Vehicle">
+                                    <option value="private-12">Car (12km/l)</option>
+                                    <option value="private-8">Van (8km/l)</option>
+                                    <option value="private-40">Bike (40km/l)</option>
+                                    <option value="private-15">Tuk (15km/l)</option>
+                                </optgroup>
+                                <optgroup label="Public Transport">
+                                    <option value="public-5">Bus - Normal (~Rs.5/km)</option>
+                                    <option value="public-10">Bus - A/C (~Rs.10/km)</option>
+                                    <option value="public-4">Train (~Rs.4/km)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div id="fuelInputGroup" class="col-span-2">
+                            <label class="block text-xs font-bold text-blue-700 mb-1">Fuel Price (Rs/L)</label>
+                            <input type="number" id="calcFuelPrice" value="370" oninput="calculateTransport()" class="w-full text-sm border border-blue-300 rounded p-1.5">
+                        </div>
+
+                        <div id="passengerInputGroup" class="col-span-2 hidden">
+                            <label class="block text-xs font-bold text-blue-700 mb-1">Passengers</label>
+                            <input type="number" id="calcPassengers" value="1" min="1" oninput="calculateTransport()" class="w-full text-sm border border-blue-300 rounded p-1.5">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center mb-1">
+                            <input type="checkbox" id="calcReturn" class="mr-2" onchange="calculateTransport()">
+                            <label for="calcReturn" class="text-xs text-blue-800 font-semibold">Return Trip? (x2)</label>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-2 rounded border border-blue-200 text-center">
+                        <p class="text-xs text-gray-500">Estimated Cost</p>
+                        <p class="text-xl font-bold text-blue-600">Rs. <span id="calcTotal">0.00</span></p>
+                    </div>
+
+                    <button onclick="addTransportExpense()" class="w-full bg-blue-600 text-white text-sm font-bold py-2 rounded hover:bg-blue-700 transition">
+                        Add to Expenses +
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script th:inline="javascript">
+    var startLoc = /*[[${trip.startLocation}]]*/ 'Colombo';
+    var endLoc = /*[[${trip.endLocation}]]*/ 'Kandy';
+    // Get Remaining Balance as Number for JS Logic
+    var rawBalance = parseFloat(/*[[${rawRemaining}]]*/ 5000);
+
+    var map = L.map('map').setView([7.8731, 80.7718], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+    var startCoords, endCoords;
+    var recMarkers = [];
+
+    // --- SMART RECOMMENDATION LOGIC ---
+    function fetchAutoRecommendations(lat, lon) {
+        var listContainer = document.getElementById('recommendationList');
+        listContainer.innerHTML = '<div class="text-center text-gray-500 text-sm animate-pulse">Scanning...</div>';
+
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`)
+            .then(res => res.json())
+            .then(data => {
+                var city = endLoc;
+                if (data && data.address) city = data.address.city || data.address.town || data.address.village || endLoc;
+                city = city.replace(" City", "").replace(" Town", "");
+
+                // Logic: Determine queries based on budget
+                var queries = [];
+
+                if (rawBalance < 2000 && rawBalance > 0) {
+                    // LOW BUDGET MODE (< 2000)
+                    queries = [
+                        { q: "street food", icon: "🌭", type: "FOOD", min: 200, max: 1000 },
+                        { q: "cafe", icon: "☕", type: "FOOD", min: 400, max: 1500 },
+                        { q: "park", icon: "🌳", type: "ACTIVITY", min: 0, max: 500 }
+                    ];
+                } else {
+                    // NORMAL MODE
+                    queries = [
+                        { q: "hotels", icon: "🏨", type: "HOTEL", min: 5000, max: 25000 },
+                        { q: "tourism", icon: "📷", type: "ACTIVITY", min: 500, max: 2000 },
+                        { q: "restaurants", icon: "🍔", type: "FOOD", min: 800, max: 4000 }
+                    ];
+                }
+
+                listContainer.innerHTML = "";
+                clearRecMarkers();
+                queries.forEach(cat => searchAndDisplay(cat.q + " in " + city, cat));
+            });
+    }
+
+    // --- Weather, Transport & Helper Functions (Same as before) ---
+    function fetchWeather(lat, lon) {
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.current_weather) {
+                    var temp = data.current_weather.temperature;
+                    var code = data.current_weather.weathercode;
+                    document.getElementById('weatherTemp').innerText = `${temp}°C`;
+                    document.getElementById('weatherWidget').classList.remove('hidden');
+
+                    var desc = "Clear";
+                    var icon = "https://cdn-icons-png.flaticon.com/512/869/869869.png";
+                    if (code > 3 && code < 50) { desc = "Cloudy"; icon = "https://cdn-icons-png.flaticon.com/512/1163/1163624.png"; }
+                    else if (code >= 50 && code < 80) { desc = "Rainy"; icon = "https://cdn-icons-png.flaticon.com/512/1163/1163657.png"; }
+                    else if (code >= 80) { desc = "Stormy"; icon = "https://cdn-icons-png.flaticon.com/512/1146/1146860.png"; }
+
+                    document.getElementById('weatherDesc').innerText = desc;
+                    document.getElementById('weatherIcon').src = icon;
+                }
+            })
+            .catch(err => console.log("Weather error", err));
+    }
+
+    function initTransportCalc() {
+        var rawDist = document.getElementById('rawDistance').value || 0;
+        document.getElementById('calcDistance').value = rawDist;
+        toggleTransportMode();
+    }
+
+    function toggleTransportMode() {
+        var selection = document.getElementById('calcVehicle').value;
+        var fuelGroup = document.getElementById('fuelInputGroup');
+        var passengerGroup = document.getElementById('passengerInputGroup');
+
+        if (selection.startsWith('public')) {
+            fuelGroup.classList.add('hidden');
+            passengerGroup.classList.remove('hidden');
+        } else {
+            fuelGroup.classList.remove('hidden');
+            passengerGroup.classList.add('hidden');
+        }
+        calculateTransport();
+    }
+
+    function calculateTransport() {
+        var dist = parseFloat(document.getElementById('calcDistance').value) || 0;
+        var selection = document.getElementById('calcVehicle').value;
+        var isReturn = document.getElementById('calcReturn').checked;
+        var factor = parseFloat(selection.split('-')[1]);
+
+        var cost = 0;
+        if (selection.startsWith('private')) {
+            var fuelPrice = parseFloat(document.getElementById('calcFuelPrice').value) || 370;
+            if (factor > 0) cost = (dist / factor) * fuelPrice;
+        } else {
+            var passengers = parseFloat(document.getElementById('calcPassengers').value) || 1;
+            cost = dist * factor * passengers;
+        }
+
+        if (isReturn) cost *= 2;
+        document.getElementById('calcTotal').innerText = cost.toFixed(2);
+    }
+
+    function addTransportExpense() {
+        var cost = document.getElementById('calcTotal').innerText;
+        var selectElem = document.getElementById('calcVehicle');
+        var vehicleText = selectElem.options[selectElem.selectedIndex].text.split("(")[0].trim();
+        var isReturn = document.getElementById('calcReturn').checked;
+
+        var title = "";
+        if (selectElem.value.startsWith('public')) {
+             var passengers = document.getElementById('calcPassengers').value;
+             title = `${vehicleText} Tickets (${passengers} ppl)`;
+        } else {
+             title = `Fuel Cost (${vehicleText})`;
+        }
+        if(isReturn) title += " (Return)";
+
+        document.getElementById('expenseTitle').value = title;
+        document.getElementById('expenseCost').value = cost;
+        document.getElementById('expenseCategory').value = 'TRANSPORT';
+
+        document.querySelector('form').scrollIntoView({behavior: 'smooth'});
+        document.querySelector('form').classList.add('ring-2', 'ring-blue-500');
+        setTimeout(() => document.querySelector('form').classList.remove('ring-2', 'ring-blue-500'), 1000);
+    }
+
+    window.addEventListener('load', () => {
+        initTransportCalc();
+    });
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(startLoc)}, Sri Lanka&limit=1`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.length > 0) {
+                startCoords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                L.marker(startCoords).addTo(map).bindPopup("Start: " + startLoc);
+                checkRoute();
+            }
+        });
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endLoc)}, Sri Lanka&limit=1`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.length > 0) {
+                endCoords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                L.marker(endCoords).addTo(map).bindPopup("End: " + endLoc);
+                checkRoute();
+                fetchAutoRecommendations(endCoords[0], endCoords[1]);
+                fetchWeather(endCoords[0], endCoords[1]);
+            }
+        });
+
+    function checkRoute() {
+        if(startCoords && endCoords) {
+            var url = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${endCoords[1]},${endCoords[0]}?overview=full&geometries=geojson`;
+            fetch(url).then(res => res.json()).then(data => {
+                if(data.routes && data.routes.length > 0) {
+                    var routeLine = L.geoJSON(data.routes[0].geometry, { style: { color: 'blue', weight: 4 } }).addTo(map);
+                    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+                }
+            });
+        }
+    }
+
+    function manualSearch() {
+        var query = document.getElementById('searchBox').value;
+        if (!query) return;
+        var listContainer = document.getElementById('recommendationList');
+        listContainer.innerHTML = '<div class="text-center text-gray-500 text-sm animate-pulse">Searching...</div>';
+        clearRecMarkers();
+        searchAndDisplay(query + ", Sri Lanka", { icon: "📍", type: "ACTIVITY", min: 500, max: 5000 });
+    }
+
+    function searchAndDisplay(queryStr, cat) {
+        var listContainer = document.getElementById('recommendationList');
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&addressdetails=1&limit=3`)
+            .then(res => res.json())
+            .then(places => {
+                if (listContainer.innerHTML.includes("Searching...")) listContainer.innerHTML = "";
+                if (!places || places.length === 0) return;
+
+                places.forEach(place => {
+                    var name = place.display_name.split(",")[0];
+                    // Cap the random price at remaining budget if low budget mode
+                    var currentMax = (rawBalance < 2000 && rawBalance > 0) ? Math.min(cat.max, rawBalance) : cat.max;
+                    var price = Math.floor(Math.random() * (currentMax - cat.min + 1)) + cat.min;
+
+                    var marker = L.marker([place.lat, place.lon]).addTo(map).bindPopup(`<b>${name}</b><br>Rs. ${price}`);
+                    recMarkers.push(marker);
+
+                    var card = document.createElement('div');
+                    card.className = "rec-card bg-white p-3 rounded border border-gray-200 shadow-sm cursor-pointer transition mb-2";
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-bold text-sm text-gray-800">${cat.icon} ${name}</h4>
+                        </div>
+                        <p class="text-green-600 font-bold text-sm mt-1">Rs. ${price}</p>
+                        <p class="text-xs text-blue-500 mt-1">Click to Add +</p>
+                    `;
+                    card.onclick = function() {
+                        document.getElementById('expenseTitle').value = name;
+                        document.getElementById('expenseCost').value = price;
+                        document.getElementById('expenseCategory').value = cat.type;
+                        card.style.backgroundColor = "#dcfce7";
+                        setTimeout(() => card.style.backgroundColor = "white", 300);
+                    };
+                    listContainer.appendChild(card);
+                });
+
+                if (places.length > 0) {
+                     var group = new L.featureGroup(recMarkers);
+                     map.fitBounds(group.getBounds().pad(0.5));
+                }
+            })
+            .catch(err => console.error("Search error:", err));
+    }
+
+    function clearRecMarkers() {
+        recMarkers.forEach(m => map.removeLayer(m));
+        recMarkers = [];
+    }
+</script>
+
+</body>
+</html>

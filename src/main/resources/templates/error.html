@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Error - BudgetTrip</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+<div class="text-center">
+    <h1 class="text-9xl font-bold text-gray-300">Oops!</h1>
+
+    <div class="bg-white p-8 rounded shadow-lg mt-[-50px] relative z-10 w-96 mx-auto">
+        <h2 class="text-2xl font-bold text-red-500 mb-4">Something went wrong</h2>
+
+        <p class="text-gray-600 mb-6">
+            We couldn't find the page you were looking for, or an error occurred while processing your request.
+        </p>
+
+        <!-- Technical Details (Optional) -->
+        <div th:if="${errorDetails}" class="bg-gray-100 p-2 rounded text-xs text-gray-500 mb-6 overflow-auto max-h-20">
+            Error: <span th:text="${errorDetails}">Details</span>
+        </div>
+
+        <a href="/dashboard" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full block">
+            Go Back to Dashboard
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>My Trips - BudgetTrip</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+<nav class="bg-blue-600 p-4 shadow-lg text-white">
+    <div class="container mx-auto flex justify-between items-center">
+        <h1 class="text-2xl font-bold">BudgetTrip 🇱🇰</h1>
+        <div class="flex items-center gap-4">
+            <span>Welcome, <span th:text="${username}" class="font-bold text-yellow-300">User</span>!</span>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">
+                    Logout
+                </button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container mx-auto mt-8 px-4 mb-12">
+
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold text-gray-800">My Trips</h2>
+        <a href="/create-trip" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow">
+            + Plan New Trip
+        </a>
+    </div>
+
+    <!-- Trip List -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div th:each="trip : ${trips}" class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <!-- FIXED: Changed 'trip.destination' to Start -> End format -->
+                    <h3 class="text-xl font-bold text-blue-600 mb-2">
+                        <span th:text="${trip.startLocation}">From</span> ➝ <span th:text="${trip.endLocation}">To</span>
+                        <span class="text-sm text-gray-500 ml-2 font-normal" th:text="'(' + ${trip.distanceKm} + ' km)'"></span>
+                    </h3>
+                    <span th:text="${trip.status}" class="bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">PLANNED</span>
+                </div>
+                <p class="text-gray-600 mb-4 text-sm">
+                    <span th:text="${trip.startDate}"></span> to <span th:text="${trip.endDate}"></span>
+                </p>
+                <div class="flex justify-between items-center border-t pt-4">
+                    <span class="text-gray-500 text-sm">Budget</span>
+                    <span class="text-green-600 font-bold text-lg" th:text="${'Rs. ' + trip.totalBudget}">Rs. 50000</span>
+                </div>
+                <div class="mt-4">
+                    <a th:href="@{/trips/{id}/expenses(id=${trip.id})}"
+                       class="block w-full bg-blue-500 text-white text-center py-2 rounded text-sm hover:bg-blue-600 font-semibold shadow">
+                        View & Add Expenses
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${trips.empty}" class="col-span-full text-center py-12 text-gray-500">
+            <p class="text-xl">You haven't planned any trips yet.</p>
+            <p>Click "Plan New Trip" to get started!</p>
+        </div>
+    </div>
+
+    <!-- PAGINATION CONTROLS -->
+    <div class="mt-8 flex justify-center items-center gap-4" th:if="${totalPages > 1}">
+        <a th:if="${currentPage > 0}"
+           th:href="@{/dashboard(page=${currentPage - 1})}"
+           class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l">
+            Previous
+        </a>
+        <span th:unless="${currentPage > 0}" class="bg-gray-200 text-gray-400 font-bold py-2 px-4 rounded-l cursor-not-allowed">
+            Previous
+        </span>
+
+        <span class="text-gray-700">
+            Page <span th:text="${currentPage + 1}">1</span> of <span th:text="${totalPages}">10</span>
+        </span>
+
+        <a th:if="${currentPage < totalPages - 1}"
+           th:href="@{/dashboard(page=${currentPage + 1})}"
+           class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r">
+            Next
+        </a>
+        <span th:unless="${currentPage < totalPages - 1}" class="bg-gray-200 text-gray-400 font-bold py-2 px-4 rounded-r cursor-not-allowed">
+            Next
+        </span>
+    </div>
+
+</div>
+
+</body>
+</html>
