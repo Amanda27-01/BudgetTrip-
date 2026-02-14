@@ -32,7 +32,6 @@ public class Expense {
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
 
-    // We moved this INSIDE the class and made it PUBLIC so PdfService can see it
     public enum ExpenseCategory {
         FLIGHT, HOTEL, FOOD, ACTIVITY, TRANSPORT
     }

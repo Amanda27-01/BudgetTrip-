@@ -5,198 +5,203 @@
     <title>Plan New Trip - BudgetTrip</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        #map {
-            height: 600px;
-            width: 100%;
-            border-radius: 0.5rem;
-            border: 2px solid #e2e8f0;
-            z-index: 1;
-            background-color: #f0fdf4;
-        }
-        /* Custom styles for Leaflet popup */
-        .leaflet-popup-content {
-            font-size: 12px;
-            font-weight: bold;
-            color: #333;
-        }
-        .hotel-popup .leaflet-popup-content { color: #d97706; }
-        .activity-popup .leaflet-popup-content { color: #7c3aed; }
+        body { font-family: 'Poppins', sans-serif; background-color: #f3f4f6; }
 
-        /* Weather Widget Animation */
+        #map {
+            height: 100%;
+            min-height: 500px;
+            width: 100%;
+            border-radius: 1rem;
+            z-index: 1;
+        }
+
+        .glass-panel {
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .modern-input {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .modern-input:focus {
+            background-color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
         .weather-box {
-            transition: all 0.5s ease;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             max-height: 0;
             opacity: 0;
             overflow: hidden;
+            transform: translateY(-10px);
         }
         .weather-box.visible {
             max-height: 200px;
             opacity: 1;
+            transform: translateY(0);
             margin-top: 1rem;
+            padding: 1rem;
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen py-8">
+<body class="min-h-screen py-10 px-4 md:px-10">
+<div class="max-w-7xl mx-auto mb-8 flex justify-between items-center">
+    <a href="/dashboard" class="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition font-bold">
+        <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+    </a>
+    <h1 class="text-2xl font-bold text-gray-800">Plan Your Journey 🗺️</h1>
+</div>
 
-<div class="container mx-auto px-4">
-
-    <div class="bg-white p-6 rounded-lg shadow-xl grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-        <!-- LEFT SIDE: FORM -->
-        <div class="lg:col-span-1 space-y-6">
-            <div>
-                <h2 class="text-2xl font-bold text-blue-600 flex items-center gap-2">
-                    <span>📍</span> Plan Trip Route
-                </h2>
-                <p class="text-xs text-gray-500 mt-1">Search specific places (e.g., "NSBM", "Pizza Hut") or click map.</p>
-            </div>
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div class="lg:col-span-4">
+        <div class="glass-panel p-8 sticky top-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 p-2 rounded-lg"><i class="fa-solid fa-pen-to-square"></i></span>
+                Trip Details
+            </h2>
 
             <form th:action="@{/trips}" method="post" id="tripForm" onsubmit="return validateForm()">
 
-                <!-- HIDDEN INPUT FOR DISTANCE -->
                 <input type="hidden" id="distanceKm" name="distanceKm" value="0.0">
 
-                <!-- Trip Name (Optional if you want it back, or auto-generated) -->
-                <!-- <input type="hidden" name="name" value="My Trip"> -->
-
-                <!-- Locations -->
-                <div class="space-y-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                    <div>
-                        <label class="block text-gray-700 text-xs font-bold mb-1 uppercase">From (Start)</label>
-                        <div class="flex items-center">
-                            <span class="bg-green-500 w-3 h-3 rounded-full mr-2"></span>
-                            <input type="text" id="startLocation" name="startLocation"
-                                   class="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
-                                   placeholder="e.g. Ibbagamuwa Central College" required
-                                   onchange="manualLocationInput('start')">
-                        </div>
+                <div class="mb-5 relative">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">From</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-location-dot absolute left-4 top-3.5 text-green-500"></i>
+                        <input type="text" id="startLocation" name="startLocation"
+                               class="modern-input w-full pl-10 pr-4 py-3 rounded-xl text-sm text-gray-800 font-medium"
+                               placeholder="Click map or type..." required
+                               onchange="manualLocationInput('start')">
                     </div>
+                </div>
 
-                    <div class="border-l-2 border-dashed border-gray-300 h-4 ml-1.5"></div>
-
-                    <div>
-                        <label class="block text-gray-700 text-xs font-bold mb-1 uppercase">To (Destination)</label>
-                        <div class="flex items-center">
-                            <span class="bg-red-500 w-3 h-3 rounded-full mr-2"></span>
-                            <input type="text" id="endLocation" name="endLocation"
-                                   class="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
-                                   placeholder="e.g. NSBM Green University" required
-                                   onchange="manualLocationInput('end')">
-                        </div>
+                <div class="mb-5 relative">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">To (Destination)</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-location-dot absolute left-4 top-3.5 text-red-500"></i>
+                        <input type="text" id="endLocation" name="endLocation"
+                               class="modern-input w-full pl-10 pr-4 py-3 rounded-xl text-sm text-gray-800 font-medium"
+                               placeholder="Click map or type..." required
+                               onchange="manualLocationInput('end')">
                     </div>
+                </div>
 
-                    <!-- Weather Widget -->
-                    <div id="weatherWidget" class="weather-box bg-white rounded-lg p-3 border border-blue-200 shadow-sm flex items-center justify-between">
+                <div id="weatherWidget" class="weather-box bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-100 shadow-sm">
+                    <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <img id="weatherIcon" src="" alt="Weather" class="w-10 h-10">
+                            <img id="weatherIcon" src="" alt="Weather" class="w-12 h-12 drop-shadow-sm">
                             <div>
-                                <p class="text-[10px] text-gray-500 font-bold uppercase">Destination Weather</p>
-                                <p id="weatherTemp" class="text-xl font-bold text-gray-800 leading-none">--°C</p>
-                                <p id="weatherDesc" class="text-xs text-blue-600 font-medium">Loading...</p>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Forecast</p>
+                                <div class="flex items-baseline gap-1">
+                                    <p id="weatherTemp" class="text-2xl font-bold text-gray-800">--°C</p>
+                                    <p id="weatherDesc" class="text-xs text-blue-600 font-medium bg-blue-100 px-2 py-0.5 rounded-full">Loading...</p>
+                                </div>
                             </div>
                         </div>
-                        <div id="rainAlert" class="hidden text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-bold">
-                            ☔ Rainy!
+                        <div id="rainAlert" class="hidden flex flex-col items-center justify-center bg-yellow-100 text-yellow-700 px-3 py-1 rounded-lg border border-yellow-200">
+                            <i class="fa-solid fa-cloud-rain text-lg mb-1"></i>
+                            <span class="text-[10px] font-bold uppercase">Rainy</span>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Recommendations Checkbox -->
-                    <div class="flex items-center mt-2">
-                        <input id="findRecommendations" type="checkbox" class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500">
-                        <label for="findRecommendations" class="ml-2 text-sm font-medium text-gray-900">Show Hotels & Activities on route 🏨📷</label>
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Start</label>
+                        <input type="date" id="startDate" name="startDate" class="modern-input w-full px-4 py-2.5 rounded-xl text-sm text-gray-600" required>
                     </div>
-
-                    <!-- Distance Display -->
-                    <div id="distanceBox" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 text-sm">
-                        <p class="font-bold">Estimated Road Distance:</p>
-                        <p id="distanceValue">Calculating...</p>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">End</label>
+                        <input type="date" id="endDate" name="endDate" class="modern-input w-full px-4 py-2.5 rounded-xl text-sm text-gray-600" required>
                     </div>
                 </div>
 
-                <!-- Dates -->
-                <div class="grid grid-cols-2 gap-4 mt-4">
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Start Date</label>
-                        <input type="date" id="startDate" name="startDate" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">End Date</label>
-                        <input type="date" id="endDate" name="endDate" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                    </div>
-                </div>
-
-                <!-- Budget -->
-                <div class="mt-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Total Budget (Rs.)</label>
+                <div class="mb-8">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Total Budget</label>
                     <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rs.</span>
+                        <span class="absolute left-4 top-3 text-gray-400 font-bold">Rs.</span>
                         <input type="number" step="0.01" name="totalBudget"
-                               class="pl-10 shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                               class="modern-input w-full pl-12 pr-4 py-3 rounded-xl text-lg font-bold text-gray-800"
                                placeholder="50000" required>
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="flex items-center justify-between gap-4 mt-8">
-                    <a href="/dashboard" class="text-gray-500 hover:text-gray-700 font-bold py-2 px-4 rounded w-1/3 text-center transition">
+                <div class="flex items-center mb-6 bg-purple-50 p-3 rounded-xl border border-purple-100">
+                    <input id="findRecommendations" type="checkbox" class="w-5 h-5 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500 focus:ring-2">
+                    <label for="findRecommendations" class="ml-3 text-sm font-medium text-gray-700">Find Hotels & Places 🏨</label>
+                </div>
+
+                <div id="distanceBox" class="hidden mb-6 bg-gray-800 text-white p-3 rounded-xl flex justify-between items-center shadow-md">
+                    <span class="text-xs text-gray-400 uppercase font-bold">Distance</span>
+                    <span id="distanceValue" class="text-sm font-bold text-yellow-400">0 km</span>
+                </div>
+
+                <div class="flex gap-3">
+                    <a href="/dashboard" class="w-1/3 py-3.5 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-300 transition text-center">
                         Cancel
                     </a>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg w-2/3 shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5">
-                        Create Trip 🚀
+                    <button type="submit" class="w-2/3 py-3.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-lg hover:bg-blue-700 hover:shadow-blue-500/30 transition transform hover:-translate-y-0.5">
+                        Create Adventure 🚀
                     </button>
                 </div>
+
             </form>
         </div>
+    </div>
 
-        <!-- RIGHT SIDE: INTERACTIVE MAP -->
-        <div class="lg:col-span-2 relative">
-            <div id="map" class="shadow-inner"></div>
+    <div class="lg:col-span-8 h-full">
+        <div class="glass-panel p-2 h-full relative overflow-hidden group">
+            <div id="map"></div>
 
-            <div class="absolute top-4 right-4 bg-white/90 backdrop-blur p-3 rounded-lg shadow-md z-[1000] text-xs max-w-xs border border-gray-200">
-                <p class="font-bold text-gray-700 border-b pb-1 mb-1">How to use Map:</p>
-                <ul class="list-none text-gray-600 space-y-1">
-                    <li>🟢 <b>Click 1:</b> Set Start Location</li>
-                    <li>🔴 <b>Click 2:</b> Set End Location</li>
+            <div class="absolute top-6 right-6 bg-white/90 backdrop-blur p-4 rounded-xl shadow-lg border border-gray-100 z-[1000] text-sm max-w-xs transition-opacity opacity-90 group-hover:opacity-100">
+                <p class="font-bold text-gray-800 mb-2 flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-blue-500"></i> Map Guide</p>
+                <ul class="space-y-1.5 text-xs text-gray-600">
+                    <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-500"></span> Click 1: Set Start Point</li>
+                    <li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-500"></span> Click 2: Set Destination</li>
                 </ul>
-                <button onclick="resetMap()" class="mt-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 rounded text-xs transition border border-gray-300">
-                    ↺ Reset Selection
+                <button onclick="resetMap()" class="mt-3 w-full py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold transition">
+                    Reset Map
                 </button>
             </div>
         </div>
-
     </div>
+
 </div>
 
-<!-- Added th:inline="none" to prevent parsing errors -->
 <script th:inline="none">
     document.addEventListener('DOMContentLoaded', function() {
-        // Set Min Date
         const today = new Date().toISOString().split('T')[0];
         document.getElementById("startDate").min = today;
         document.getElementById("endDate").min = today;
 
-        // Initialize Map
         var map = L.map('map', {
             center: [7.8731, 80.7718],
             zoom: 8,
             minZoom: 7,
-            maxBounds: [[5.8, 79.0], [10.0, 82.5]], // Arrays work fine now with th:inline="none"
-            maxBoundsViscosity: 1.0
+            maxBounds: [[5.8, 79.0], [10.0, 82.5]],
+            maxBoundsViscosity: 1.0,
+            zoomControl: false
         });
 
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+            attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Fix: Force map refresh to avoid gray screen
-        setTimeout(function() {
-            map.invalidateSize();
-        }, 500);
+        setTimeout(function() { map.invalidateSize(); }, 500);
 
         var selectionStep = 1;
         var startMarker = null;
@@ -204,7 +209,6 @@
         var routeLine = null;
         var recommendationMarkers = [];
 
-        // Validation
         window.validateForm = function() {
             var dist = document.getElementById('distanceKm').value;
             if (!dist || dist === "0.0") {
@@ -218,202 +222,59 @@
             return true;
         }
 
-        // --- Handle Specific Place Search (Restored Logic) ---
         window.manualLocationInput = function(type) {
             var inputId = type === 'start' ? 'startLocation' : 'endLocation';
             var query = document.getElementById(inputId).value;
-
             if (!query) return;
 
             fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=lk&addressdetails=1&limit=1`)
-                .then(response => {
-                    if(!response.ok) throw new Error("Network");
-                    return response.json();
-                })
+                .then(res => { if(!res.ok) throw new Error("Net"); return res.json(); })
                 .then(data => {
                     if (data && data.length > 0) {
-                        var result = data[0];
-                        var lat = parseFloat(result.lat);
-                        var lon = parseFloat(result.lon);
-                        var displayName = result.display_name;
-
-                        var shortName = displayName.split(",")[0];
-                        var city = result.address.city || result.address.town || result.address.village || result.address.state || "Sri Lanka";
-
-                        document.getElementById(inputId).value = shortName + ", " + city;
-
-                        if (type === 'start') {
-                            if (startMarker) map.removeLayer(startMarker);
-                            startMarker = L.marker([lat, lon], {icon: createIcon('green')}).addTo(map)
-                                .bindPopup("<b>Start:</b> " + displayName).openPopup();
-                            map.setView([lat, lon], 16);
-                            selectionStep = 2;
-                        } else {
-                            if (endMarker) map.removeLayer(endMarker);
-                            endMarker = L.marker([lat, lon], {icon: createIcon('red')}).addTo(map)
-                                .bindPopup("<b>End:</b> " + displayName).openPopup();
-                            map.setView([lat, lon], 16);
-                            selectionStep = 1;
-
-                            // *** WEATHER FETCH ADDED HERE ***
-                            fetchWeather(lat, lon);
-                        }
-                        drawRouteAndCalculate();
-                    } else {
-                        alert("Place not found in Sri Lanka! Try adding more details.");
+                        var r = data[0];
+                        if (type === 'start') setStartPoint(r.lat, r.lon, r.display_name.split(",")[0]);
+                        else setEndPoint(r.lat, r.lon, r.display_name.split(",")[0]);
                     }
                 })
-                .catch(error => console.error("Error fetching location:", error));
+                .catch(err => console.error(err));
         }
 
-        // --- Handle Map Click (Restored Logic) ---
         map.on('click', function(e) {
-            var lat = e.latlng.lat;
-            var lng = e.latlng.lng;
-
             document.body.style.cursor = 'wait';
-
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-                .then(response => {
-                    if(!response.ok) throw new Error("Network");
-                    return response.json();
-                })
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+                .then(res => { if(!res.ok) throw new Error("Net"); return res.json(); })
                 .then(data => {
                     document.body.style.cursor = 'default';
+                    var name = data.address.city || data.address.town || data.address.village || "Location";
+                    if(data.address.amenity || data.address.tourism) name = (data.address.amenity || data.address.tourism) + ", " + name;
 
-                    var address = data.address;
-                    var specificName = address.amenity || address.leisure || address.tourism || address.building || address.shop || address.office;
-                    var cityName = address.city || address.town || address.village || address.suburb || "Unknown Location";
-                    var locationName = specificName ? (specificName + ", " + cityName) : cityName;
-
-                    if (selectionStep === 1) {
-                        document.getElementById('startLocation').value = locationName;
-                        if (startMarker) map.removeLayer(startMarker);
-                        startMarker = L.marker([lat, lng], {icon: createIcon('green')}).addTo(map)
-                            .bindPopup("<b>Start:</b> " + locationName).openPopup();
-                        selectionStep = 2;
-                    } else if (selectionStep === 2) {
-                        document.getElementById('endLocation').value = locationName;
-                        if (endMarker) map.removeLayer(endMarker);
-                        endMarker = L.marker([lat, lng], {icon: createIcon('red')}).addTo(map)
-                            .bindPopup("<b>End:</b> " + locationName).openPopup();
-                        selectionStep = 1;
-
-                        // *** WEATHER FETCH ADDED HERE ***
-                        fetchWeather(lat, lng);
-                    }
-                    drawRouteAndCalculate();
+                    if (selectionStep === 1) setStartPoint(e.latlng.lat, e.latlng.lng, name);
+                    else if (selectionStep === 2) setEndPoint(e.latlng.lat, e.latlng.lng, name);
                 })
-                .catch(error => {
-                    document.body.style.cursor = 'default';
-                    console.error('Error:', error);
-                });
+                .catch(e => document.body.style.cursor = 'default');
         });
 
-        // --- Draw Route & Find Recommendations ---
-        function drawRouteAndCalculate() {
-            if (startMarker && endMarker) {
-                var startLatLng = startMarker.getLatLng();
-                var endLatLng = endMarker.getLatLng();
-
-                document.getElementById('distanceBox').classList.remove('hidden');
-                document.getElementById('distanceValue').innerText = "Finding route...";
-
-                var url = `https://router.project-osrm.org/route/v1/driving/${startLatLng.lng},${startLatLng.lat};${endLatLng.lng},${endLatLng.lat}?overview=full&geometries=geojson`;
-
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                            var route = data.routes[0];
-                            var distanceKm = (route.distance / 1000).toFixed(2);
-
-                            document.getElementById('distanceValue').innerText = distanceKm + " km (Road Distance)";
-                            document.getElementById('distanceKm').value = distanceKm;
-
-                            if (routeLine) map.removeLayer(routeLine);
-
-                            routeLine = L.geoJSON(route.geometry, {
-                                style: { color: 'blue', weight: 5, opacity: 0.7 }
-                            }).addTo(map);
-
-                            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
-
-                            // --- RECOMMENDATION LOGIC ---
-                            if (document.getElementById('findRecommendations').checked) {
-                                findRecommendationsOnRoute(route.geometry.coordinates);
-                            }
-                        } else {
-                            var directDist = (startLatLng.distanceTo(endLatLng)/1000).toFixed(2);
-                            document.getElementById('distanceValue').innerText = "Route not found! (Direct: " + directDist + " km)";
-                            document.getElementById('distanceKm').value = directDist;
-                            if (routeLine) map.removeLayer(routeLine);
-                            routeLine = L.polyline([startLatLng, endLatLng], {color: 'red', dashArray: '5, 5'}).addTo(map);
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        document.getElementById('distanceValue').innerText = "Error fetching route.";
-                    });
-            }
+        function setStartPoint(lat, lng, name) {
+            document.getElementById('startLocation').value = name;
+            if (startMarker) map.removeLayer(startMarker);
+            startMarker = L.marker([lat, lng], {icon: createIcon('green')}).addTo(map).bindPopup("<b>Start:</b> " + name).openPopup();
+            selectionStep = 2;
+            drawRouteAndCalculate();
         }
 
-        // --- Find Hotels AND Activities at Route Midpoint ---
-        function findRecommendationsOnRoute(coordinates) {
-            // Clear old markers
-            recommendationMarkers.forEach(m => map.removeLayer(m));
-            recommendationMarkers = [];
-
-            // Pick a point roughly in the middle
-            var midIndex = Math.floor(coordinates.length / 2);
-            var midPoint = coordinates[midIndex]; // [lng, lat]
-            var lat = midPoint[1];
-            var lng = midPoint[0];
-
-            // 1. Get the city/town name of the midpoint
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-                .then(res => res.json())
-                .then(data => {
-                    var city = data.address.city || data.address.town || data.address.village;
-                    if (!city) city = "Sri Lanka";
-
-                    // 2. Search for HOTELS
-                    searchAndMark("hotels", city, 'gold', 'hotel-popup', "Est. Price", 5000, 20000);
-
-                    // 3. Search for TOURIST ATTRACTIONS (Activities)
-                    searchAndMark("tourism", city, 'violet', 'activity-popup', "Entry Fee", 500, 3000);
-                })
-                .catch(err => console.error("Rec Error", err));
+        function setEndPoint(lat, lng, name) {
+            document.getElementById('endLocation').value = name;
+            if (endMarker) map.removeLayer(endMarker);
+            endMarker = L.marker([lat, lng], {icon: createIcon('red')}).addTo(map).bindPopup("<b>End:</b> " + name).openPopup();
+            selectionStep = 1;
+            drawRouteAndCalculate();
+            fetchWeather(lat, lng);
         }
 
-        function searchAndMark(query, city, iconColor, popupClass, costLabel, minCost, maxCost) {
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query} in ${city}&limit=3`)
-                .then(res => res.json())
-                .then(places => {
-                    places.forEach(place => {
-                        // Generate mock cost
-                        var randomCost = Math.floor(Math.random() * (maxCost - minCost + 1)) + minCost;
-
-                        var marker = L.marker([place.lat, place.lon], {icon: createIcon(iconColor)})
-                            .addTo(map)
-                            .bindPopup(`<b style="${iconColor === 'violet' ? 'color:#7c3aed' : 'color:#d97706'}">${place.display_name.split(",")[0]}</b><br>${costLabel}: Rs. ${randomCost}`, {
-                                className: popupClass
-                            });
-                        recommendationMarkers.push(marker);
-                    });
-                })
-                .catch(err => console.error("Search Error", err));
-        }
-
-        // --- Weather Function (Added Back) ---
         function fetchWeather(lat, lon) {
             fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
-                .then(res => {
-                    if (!res.ok) throw new Error("Weather API response not ok");
-                    return res.json();
-                })
-                .then(data => { if(data.current_weather) updateWeatherUI(data.current_weather); })
-                .catch(err => console.error("Weather Fetch Error:", err));
+                .then(res => res.json())
+                .then(data => { if(data.current_weather) updateWeatherUI(data.current_weather); });
         }
 
         function updateWeatherUI(weather) {
@@ -432,14 +293,63 @@
             document.getElementById('weatherIcon').src = icon;
         }
 
+        function drawRouteAndCalculate() {
+            if (startMarker && endMarker) {
+                document.getElementById('distanceBox').classList.remove('hidden');
+                document.getElementById('distanceValue').innerText = "Calculating...";
+                var p1 = startMarker.getLatLng(), p2 = endMarker.getLatLng();
+
+                fetch(`https://router.project-osrm.org/route/v1/driving/${p1.lng},${p1.lat};${p2.lng},${p2.lat}?overview=full&geometries=geojson`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.routes && data.routes.length > 0) {
+                            var dist = (data.routes[0].distance / 1000).toFixed(2);
+                            document.getElementById('distanceValue').innerText = dist + " km (Road)";
+                            document.getElementById('distanceKm').value = dist;
+                            if (routeLine) map.removeLayer(routeLine);
+                            routeLine = L.geoJSON(data.routes[0].geometry, { style: { color: '#3b82f6', weight: 6, opacity: 0.8 } }).addTo(map);
+                            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
+                            if (document.getElementById('findRecommendations').checked) findRecommendationsOnRoute(data.routes[0].geometry.coordinates);
+                        } else {
+                            var d = (p1.distanceTo(p2)/1000).toFixed(2);
+                            document.getElementById('distanceValue').innerText = "Direct: " + d + " km";
+                            document.getElementById('distanceKm').value = d;
+                        }
+                    });
+            }
+        }
+
+        function findRecommendationsOnRoute(coords) {
+            recommendationMarkers.forEach(m => map.removeLayer(m));
+            recommendationMarkers = [];
+            var mid = coords[Math.floor(coords.length / 2)];
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${mid[1]}&lon=${mid[0]}`)
+                .then(res => res.json())
+                .then(data => {
+                    var city = data.address.city || data.address.town || "Sri Lanka";
+                    searchAndMark("hotels", city, 'gold', 'hotel-popup', "Est. Price", 5000, 20000);
+                    searchAndMark("tourism", city, 'violet', 'activity-popup', "Entry Fee", 500, 3000);
+                });
+        }
+
+        function searchAndMark(q, c, color, cls, label, min, max) {
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q} in ${c}&limit=3`)
+                .then(res => res.json())
+                .then(places => {
+                    places.forEach(p => {
+                        var cost = Math.floor(Math.random() * (max - min + 1)) + min;
+                        var m = L.marker([p.lat, p.lon], {icon: createIcon(color)}).addTo(map)
+                            .bindPopup(`<b style="color:${color === 'violet'?'#7c3aed':'#d97706'}">${p.display_name.split(",")[0]}</b><br>${label}: Rs. ${cost}`, {className: cls});
+                        recommendationMarkers.push(m);
+                    });
+                });
+        }
+
         window.resetMap = function() {
             document.getElementById('startLocation').value = '';
             document.getElementById('endLocation').value = '';
             document.getElementById('distanceBox').classList.add('hidden');
-            document.getElementById('distanceKm').value = '';
-            // Hide Weather
             document.getElementById('weatherWidget').classList.remove('visible');
-
             if (startMarker) map.removeLayer(startMarker);
             if (endMarker) map.removeLayer(endMarker);
             if (routeLine) map.removeLayer(routeLine);

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -41,7 +42,6 @@ public class TripController {
         this.distanceService = distanceService;
     }
 
-    // --- DASHBOARD ---
     @GetMapping("/dashboard")
     public String dashboard(@RequestParam(defaultValue = "0") int page, Model model, Principal principal) {
         String username = principal.getName();
@@ -55,7 +55,6 @@ public class TripController {
         return "dashboard";
     }
 
-    // --- CREATE TRIP ---
     @GetMapping("/create-trip")
     public String showCreateTripForm(Model model) {
         model.addAttribute("trip", new Trip());
@@ -86,7 +85,6 @@ public class TripController {
         return createTrip(trip, result, principal, model);
     }
 
-    // --- TRIP DETAILS & EXPENSE LIST ---
     @GetMapping("/trips/{id}")
     public String viewTripDetails(@PathVariable Long id, Model model) {
         Trip trip = tripRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Invalid trip Id:" + id));
@@ -99,10 +97,8 @@ public class TripController {
         BigDecimal totalBudget = trip.getTotalBudget();
         BigDecimal remaining = totalBudget.subtract(totalSpent);
 
-        // 1. Check Over Budget (Red Alert)
         boolean isOverBudget = totalSpent.compareTo(totalBudget) > 0;
 
-        // 2. Check Low Budget (Orange Alert) - e.g., less than 2000 but not negative
         BigDecimal lowThreshold = new BigDecimal("2000");
         boolean isLowBudget = !isOverBudget && remaining.compareTo(lowThreshold) <= 0 && remaining.compareTo(BigDecimal.ZERO) > 0;
 
@@ -117,7 +113,7 @@ public class TripController {
         model.addAttribute("newExpense", new Expense());
         model.addAttribute("totalSpent", String.format("%.2f", totalSpent));
         model.addAttribute("remaining", String.format("%.2f", remaining));
-        model.addAttribute("rawRemaining", remaining); // Pass raw number for JS logic
+        model.addAttribute("rawRemaining", remaining);
         model.addAttribute("progress", progressInt);
 
         model.addAttribute("isOverBudget", isOverBudget);
@@ -126,7 +122,6 @@ public class TripController {
         return "trip-details";
     }
 
-    // --- ADD EXPENSE ---
     @Transactional
     @PostMapping({"/trips/{id}/add-expense", "/trips/{id}/expenses"})
     public String addExpense(@PathVariable Long id, @ModelAttribute Expense expense) {
@@ -137,7 +132,6 @@ public class TripController {
         return "redirect:/trips/" + id;
     }
 
-    // --- EDIT EXPENSE ---
     @GetMapping("/trips/{tripId}/expenses/{expenseId}/edit")
     public String showEditExpenseForm(@PathVariable Long tripId, @PathVariable Long expenseId, Model model) {
         Trip trip = tripRepository.findById(tripId).orElseThrow();
@@ -158,13 +152,11 @@ public class TripController {
         return "redirect:/trips/" + tripId;
     }
 
-    // --- VIEW EXPENSES LEGACY REDIRECT ---
     @GetMapping("/trips/{id}/expenses")
     public String viewTripExpenses(@PathVariable Long id) {
         return "redirect:/trips/" + id;
     }
 
-    // --- DELETE EXPENSE ---
     @Transactional
     @GetMapping({"/trips/{tripId}/expenses/{expenseId}/delete", "/trips/{tripId}/expenses/{expenseId}/remove"})
     public String deleteExpense(@PathVariable Long tripId, @PathVariable Long expenseId) {
@@ -174,7 +166,6 @@ public class TripController {
         return "redirect:/trips/" + tripId;
     }
 
-    // --- EXPORT PDF ---
     @GetMapping("/trips/{id}/export")
     public void exportToPDF(HttpServletResponse response, @PathVariable Long id) throws IOException {
         response.setContentType("application/pdf");
@@ -184,5 +175,43 @@ public class TripController {
         Trip trip = tripRepository.findById(id).orElseThrow();
         List<Expense> expenses = expenseRepository.findByTrip(trip);
         pdfService.generateItinerary(response.getOutputStream(), trip, expenses);
+    }
+
+    @GetMapping("/reviews")
+    public String showReviews(Model model, Principal principal) {
+        String username = principal.getName();
+        User user = userRepository.findByUsername(username).orElseThrow();
+        List<Trip> trips = tripRepository.findByUser(user);
+
+        model.addAttribute("username", username);
+        model.addAttribute("trips", trips);
+        return "review";
+    }
+
+    @PostMapping("/reviews")
+    public String submitReview(@RequestParam Long tripId,
+                               @RequestParam int rating,
+                               @RequestParam(required = false) String highlight,
+                               @RequestParam(required = false) String feedback,
+                               Principal principal,
+                               RedirectAttributes redirectAttributes) {
+
+        String username = principal.getName();
+        User user = userRepository.findByUsername(username).orElseThrow();
+        Trip trip = tripRepository.findById(tripId).orElseThrow();
+
+        if (!trip.getUser().getId().equals(user.getId())) {
+            redirectAttributes.addFlashAttribute("reviewError", "Trip not found for your account.");
+            return "redirect:/reviews";
+        }
+
+        int safeRating = Math.max(1, Math.min(5, rating));
+        redirectAttributes.addFlashAttribute("reviewMessage", "Thanks for reviewing your trip to " + trip.getEndLocation() + "!");
+        redirectAttributes.addFlashAttribute("lastRating", safeRating);
+        redirectAttributes.addFlashAttribute("lastTrip", trip.getStartLocation() + " -> " + trip.getEndLocation());
+        redirectAttributes.addFlashAttribute("lastHighlight", highlight);
+        redirectAttributes.addFlashAttribute("lastFeedback", feedback);
+
+        return "redirect:/reviews";
     }
 }

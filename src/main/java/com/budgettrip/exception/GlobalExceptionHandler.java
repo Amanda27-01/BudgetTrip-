@@ -8,11 +8,10 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Handle "Not Found" or specific logic errors
     @ExceptionHandler(Exception.class)
     public String handleGeneralException(Exception e, Model model) {
         model.addAttribute("errorMessage", "Something went wrong! Please try again.");
         model.addAttribute("errorDetails", e.getMessage());
-        return "error"; // This looks for error.html
+        return "error";
     }
 }

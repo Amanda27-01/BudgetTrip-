@@ -23,7 +23,6 @@ public class AdminController {
         this.tripRepository = tripRepository;
     }
 
-    // 1. Admin Dashboard එක පෙන්වීම
     @GetMapping("/dashboard")
     public String adminDashboard(Model model) {
         List<User> users = userRepository.findAll();
@@ -32,11 +31,9 @@ public class AdminController {
         model.addAttribute("users", users);
         model.addAttribute("userCount", users.size());
         model.addAttribute("tripCount", totalTrips);
-
-        return "admin-dashboard"; // මේ නමින් HTML ෆයිල් එකක් තියෙන්න ඕන
+        return "admin-dashboard";
     }
 
-    // 2. User කෙනෙක් Delete කිරීම
     @GetMapping("/users/{id}/delete")
     public String deleteUser(@PathVariable Long id) {
         userRepository.deleteById(id);

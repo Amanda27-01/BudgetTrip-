@@ -23,14 +23,9 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // ඕනෑම කෙනෙක්ට යන්න පුළුවන් තැන්
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/", "/register", "/login", "/error").permitAll()
-
-                        // 🔐 ADMIN ට විතරක් යන්න පුළුවන් තැන්
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-
-                        // අනිත් හැම තැනටම Login වෙලා ඉන්න ඕන
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form

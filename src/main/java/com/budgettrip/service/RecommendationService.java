@@ -11,7 +11,6 @@ public class RecommendationService {
 
     private static final List<Activity> ALL_ACTIVITIES = new ArrayList<>();
 
-    // Mock Database of Sri Lankan Activities
     static {
         ALL_ACTIVITIES.add(new Activity("Sigiriya Rock Fortress", new BigDecimal("3000"), "CULTURAL"));
         ALL_ACTIVITIES.add(new Activity("Mirissa Whale Watching", new BigDecimal("5000"), "ADVENTURE"));
@@ -22,14 +21,12 @@ public class RecommendationService {
         ALL_ACTIVITIES.add(new Activity("Surfing Lesson", new BigDecimal("4000"), "ADVENTURE"));
     }
 
-    // Filter activities that fit within the remaining budget
     public List<Activity> getRecommendations(BigDecimal remainingBudget) {
         return ALL_ACTIVITIES.stream()
                 .filter(activity -> activity.cost.compareTo(remainingBudget) <= 0)
                 .collect(Collectors.toList());
     }
 
-    // Simple inner class to hold data
     public static class Activity {
         public String name;
         public BigDecimal cost;

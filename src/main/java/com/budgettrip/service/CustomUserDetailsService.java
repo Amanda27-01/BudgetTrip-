@@ -21,10 +21,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        // මෙතනදී අපි User ගේ Role එක Security එකට දෙනවා
         return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
                 .password(user.getPassword())
-                .roles(user.getRole().name()) // ✅ "USER" හෝ "ADMIN" ලෙස ලබා දෙයි
+            .roles(user.getRole().name())
                 .build();
     }
 }

@@ -45,18 +45,14 @@ public class Trip {
     @Positive(message = "Budget must be positive")
     private BigDecimal totalBudget;
 
-    private Double distanceKm; // To store calculated distance
+    private Double distanceKm;
 
-    private String status; // PLANNED, COMPLETED
+    private String status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // ✅ FIXED: Added CascadeType.ALL & orphanRemoval = true
-    // This ensures Expenses are deleted when a Trip is deleted
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Expense> expenses = new ArrayList<>();
-
-    // ... (Getters, Setters, Constructors handled by Lombok)
 }

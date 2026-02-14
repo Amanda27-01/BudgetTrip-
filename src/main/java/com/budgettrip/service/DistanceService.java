@@ -8,21 +8,16 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class DistanceService {
 
-    // Free OpenStreetMap API URL
     private final String NOMINATIM_API = "https://nominatim.openstreetmap.org/search?format=json&q=";
 
     public double getDistance(String startCity, String endCity) {
         try {
-            // 1. Get Coordinates for Start City
             Location loc1 = getCoordinates(startCity);
-            // 2. Get Coordinates for End City
             Location loc2 = getCoordinates(endCity);
 
             if (loc1 == null || loc2 == null) {
-                return 0.0; // City not found
+                return 0.0;
             }
-
-            // 3. Calculate Distance using Haversine Formula
             return calculateHaversine(loc1.lat, loc1.lon, loc2.lat, loc2.lon);
 
         } catch (Exception e) {
@@ -34,13 +29,10 @@ public class DistanceService {
     private Location getCoordinates(String city) {
         try {
             RestTemplate restTemplate = new RestTemplate();
-            // Append "Sri Lanka" to search to avoid foreign cities
             String url = NOMINATIM_API + city + ", Sri Lanka";
 
-            // Call the API
             String response = restTemplate.getForObject(url, String.class);
 
-            // Parse JSON response
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(response);
 
@@ -57,7 +49,7 @@ public class DistanceService {
     }
 
     private double calculateHaversine(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // Earth radius in km
+        final int R = 6371;
         double latDistance = Math.toRadians(lat2 - lat1);
         double lonDistance = Math.toRadians(lon2 - lon1);
         double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)

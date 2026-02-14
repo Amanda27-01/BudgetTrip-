@@ -39,8 +39,6 @@ public class User {
 
     private String preference;
 
-    // ✅ FIXED: Added CascadeType.ALL and orphanRemoval = true
-    // This ensures that when a User is deleted, all their Trips are also deleted.
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Trip> trips = new ArrayList<>();
 

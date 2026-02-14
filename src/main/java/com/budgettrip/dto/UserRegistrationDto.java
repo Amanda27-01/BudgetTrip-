@@ -18,7 +18,5 @@ public class UserRegistrationDto {
 
     @NotEmpty(message = "Password is required")
     private String password;
-
-    // Optional: For the Sri Lanka tourism feature
-    private String preference; // e.g., "Cultural", "Beach", "Adventure"
+    private String preference;
 }

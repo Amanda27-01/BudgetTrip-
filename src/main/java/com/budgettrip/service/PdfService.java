@@ -21,36 +21,29 @@ public class PdfService {
 
         document.open();
 
-        // 1. Title
         Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
 
-        // FIX: We changed 'getDestination()' to 'getStartLocation()' + 'getEndLocation()'
         String routeTitle = trip.getStartLocation() + " ➝ " + trip.getEndLocation();
         Paragraph title = new Paragraph("Trip Itinerary: " + routeTitle, titleFont);
 
         title.setAlignment(Paragraph.ALIGN_CENTER);
         document.add(title);
-        document.add(new Paragraph(" ")); // Empty line
+        document.add(new Paragraph(" "));
 
-        // 2. Trip Details
         document.add(new Paragraph("Distance: " + trip.getDistanceKm() + " km"));
         document.add(new Paragraph("Dates: " + trip.getStartDate() + " to " + trip.getEndDate()));
         document.add(new Paragraph("Total Budget: Rs. " + trip.getTotalBudget()));
         document.add(new Paragraph(" "));
 
-        // 3. Expenses Table
-        PdfPTable table = new PdfPTable(3); // 3 Columns
+        PdfPTable table = new PdfPTable(3);
         table.setWidthPercentage(100);
 
-        // Table Headers
         addTableHeader(table, "Item");
         addTableHeader(table, "Category");
         addTableHeader(table, "Cost (Rs.)");
 
-        // Table Data
         for (Expense expense : expenses) {
             table.addCell(expense.getTitle());
-            // Use safe string conversion for category in case it's null
             String category = (expense.getCategory() != null) ? expense.getCategory().toString() : "N/A";
             table.addCell(category);
             table.addCell(expense.getCost().toString());
